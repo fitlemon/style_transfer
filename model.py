@@ -126,7 +126,7 @@ class StyleTransferModel:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Describe this photograph in 2 short sentences as a prompt for generating an image in Stable Diffusion, adding vivid details (e.g. color, clothes, objects around, etc.) to help the model understand the image better. This photo is from kindergarten. Please be careful with the content. Describe only kid's activities. Add to prompt that the model should generate a happy and joyful image without NFSW.",
+                                "text": "Describe this photo in 2 short sentences as a prompt for generating an image in Stable Diffusion, adding vivid details (e.g. color, clothes, objects around, etc.) to help the model understand the image better. This photo is from kindergarten. Please be careful with the content. Describe only kid's activities",
                             },
                             {
                                 "type": "image_url",
@@ -137,7 +137,6 @@ class StyleTransferModel:
                             },
                         ],
                     },
-                    {"role": "user", "content": data_url},
                 ],
                 max_tokens=300,
             )
