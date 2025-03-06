@@ -25,36 +25,40 @@ router = Router()
 
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
-    """Handle the /start command"""
-    # Clear any previous state data
+    """Обработчик команды /start"""
+    # Очищаем предыдущее состояние
     await state.clear()
 
     await message.answer(
-        "Welcome to StyleTransfer Bot! 🎨\n\n"
-        "This bot applies the style of one image to another image.\n\n"
-        "Choose an action from the menu below:",
+        "Добро пожаловать в StyleTransfer Bot! 🎨\n\n"
+        "Этот бот позволяет применить стиль одного изображения к другому.\n\n"
+        "Выберите действие из меню ниже:",
         reply_markup=get_main_menu_keyboard(),
     )
 
 
 @router.message(Command("help"))
 async def cmd_help(message: Message):
-    """Handle the /help command"""
+    """Обработчик команды /help"""
     help_text = (
-        "🖼 <b>StyleTransfer Bot Help</b>\n\n"
-        "This bot allows you to apply the style of one image to another image.\n\n"
-        "<b>Commands:</b>\n"
-        "/start - Start the bot and show the main menu\n"
-        "/help - Show this help message\n"
-        "/settings - Configure style transfer parameters\n"
-        "/cancel - Cancel the current operation\n\n"
-        "<b>How to use:</b>\n"
-        "1. Select 'New Style Transfer' from the menu\n"
-        "2. Send a reference style photo\n"
-        "3. Send the content photo to apply the style to\n"
-        "4. Wait for processing (this may take a minute)\n"
-        "5. Receive your styled image\n\n"
-        "<b>Settings:</b>\n"
+        "🖼 <b>Справка по StyleTransfer Bot</b>\n\n"
+        "Этот бот позволяет применить стиль одного изображения к другому.\n\n"
+        "<b>Команды:</b>\n"
+        "/start - Запустить бота и показать главное меню\n"
+        "/help - Показать это сообщение справки\n"
+        "/settings - Настроить параметры style transfer\n"
+        "/cancel - Отменить текущую операцию\n\n"
+        "<b>Как использовать:</b>\n"
+        "1. Выберите «🔄 Новый перенос стиля» в меню\n"
+        "2. Отправьте фото-референс стиля\n"
+        "3. Отправьте фото, к которому хотите применить выбранный стиль\n"
+        "4. Дождитесь своей очереди и завершения обработки (это может занять некоторое время)\n"
+        "5. Получите стилизованное изображение\n\n"
+        "<b>Очередь:</b>\n"
+        "Если несколько пользователей запрашивают перенос стиля одновременно, "
+        "запросы будут обрабатываться в порядке очереди. Вы будете уведомлены "
+        "о вашей позиции в очереди и когда начнется обработка вашего запроса.\n\n"
+        "<b>Настройки:</b>\n"
         "- Guidance Scale: Controls how closely the image follows the prompt\n"
         "- Conditioning Scale: Controls the influence of the control image\n"
         "- Inference Steps: Controls the quality (more steps = better quality but slower)\n"
@@ -126,8 +130,8 @@ async def start_new_transfer(callback: CallbackQuery, state: FSMContext):
     await state.set_state(StyleTransferStates.waiting_for_style_photo)
 
     await callback.message.answer(
-        "Let's start a new style transfer! 🎨\n\n"
-        "First, please send me a reference style photo - this will determine the style to apply."
+        "Начнём новый перенос стиля! 🎨\n\n"
+        "Сначала отправьте мне фото-референс стиля — по нему будет определяться применяемый стиль."
     )
 
 
@@ -135,7 +139,7 @@ async def start_new_transfer(callback: CallbackQuery, state: FSMContext):
 async def on_style_photo(message: Message, state: FSMContext):
     """Handle incoming style reference photo"""
     # Download the photo
-    await message.answer("Received your style reference photo! ✅")
+    await message.answer("Стилевое фото получено! ✅")
 
     # Get the highest resolution photo
     file_id = message.photo[-1].file_id
@@ -161,7 +165,7 @@ async def on_style_photo(message: Message, state: FSMContext):
     )
 
     await message.answer(
-        "Great! Now please send me the photo you want to apply this style to.",
+        "Отлично! Теперь отправьте фото, к которому вы хотите применить этот стиль.",
         reply_markup=cancel_kb,
     )
 
@@ -170,7 +174,8 @@ async def on_style_photo(message: Message, state: FSMContext):
 async def on_content_photo(message: Message, state: FSMContext, style_model):
     """Handle incoming content photo"""
     # Download the photo
-    await message.answer("Received your content photo! Processing... ⏳")
+    # Загружаем фото
+    await message.answer("Фото-контент получен! Добавляю в очередь на обработку... ⏳")
 
     # Get the highest resolution photo
     file_id = message.photo[-1].file_id
@@ -205,23 +210,21 @@ async def on_content_photo(message: Message, state: FSMContext, style_model):
         if ip_adapter_scale != style_model.ip_adapter_scale:  # Use the class attribute
             style_model.set_ip_adapter_scale(ip_adapter_scale)  # Use the new method
 
-        # Load and process the images
-        style_img = Image.open(style_photo_path)
-        content_img = Image.open(content_photo_path)
+        # Загружаем и подготавливаем изображения
+        style_img = style_model.preprocess_image(style_photo_path)
+        content_img = style_model.preprocess_image(content_photo_path)
 
-        style_img.thumbnail((512, 512))  # Resize for faster processing
-        content_img.thumbnail((512, 512))  # Resize for faster processing
-
-        # Generate canny image from content photo
+        # Генерируем Canny изображение из content фото
         canny_img = style_model.get_canny_image(
             content_img, detect_resolution=content_img.size[1]
         )
 
-        # Generate a prompt from the style image
-        prompt = style_model.generate_prompt(style_img)
+        # Генерируем промпт, используя оба изображения
+        await message.answer("🔍 Анализирую содержание и стиль изображений...")
+        prompt = style_model.generate_prompt(content_img, style_img)
 
-        # Generate the styled image using style image reference and content image
-        await message.answer(f"Transferring style with prompt:\n{prompt}")
+        # Сообщаем пользователю о начале генерации с промптом
+        await message.answer(f"Переношу стиль с промптом:\n{prompt}")
 
         gen_images = style_model.generate(
             prompt=prompt,
@@ -263,7 +266,7 @@ async def on_content_photo(message: Message, state: FSMContext, style_model):
         # Send the generated image using FSInputFile instead of opening the file
         await message.answer_photo(
             FSInputFile(generated_file_path),
-            caption=f"✨ Here's your styled image! ✨\n\n<b>Settings used:</b>\n"
+            caption=f"✨Вот стилизованная картинка! ✨\n\n<b>Settings used:</b>\n"
             f"• Guidance Scale: {guidance_scale}\n"
             f"• Conditioning Scale: {conditioning_scale}\n"
             f"• Inference Steps: {inference_steps}\n"
