@@ -1,0 +1,11 @@
+# ingore .venv
+.venv
+
+# .env
+.env
+
+# pycache
+__pycache__
+
+# logs
+logs
