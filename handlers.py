@@ -278,6 +278,9 @@ async def on_content_photo(message: Message, state: FSMContext, style_model):
         os.remove(style_photo_path)
         os.remove(content_photo_path)
         os.remove(generated_file_path)
+        style_img.close()
+        content_img.close()
+        gen_images[0].close()
 
         # Reset state
         await state.clear()
@@ -324,20 +327,20 @@ async def photo_without_state(message: Message):
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🔄 Start Style Transfer", callback_data="action:new_transfer"
+                    text="🔄 Начать перенос стиля", callback_data="action:new_transfer"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="📋 Main Menu", callback_data="action:main_menu"
+                    text="📋 Главное меню"", callback_data="action:main_menu"
                 )
             ],
         ]
     )
 
     await message.answer(
-        "I see you've sent a photo, but I'm not sure what you want to do with it.\n\n"
-        "To start a style transfer process, please use the button below:",
+        "Вы отправили фото, но я пока не понимаю, что с ним делать.\n\n"
+        "Чтобы начать процесс переноса стиля, воспользуйтесь кнопкой ниже:",
         reply_markup=options_kb,
     )
 
@@ -349,7 +352,7 @@ async def show_main_menu(callback: CallbackQuery, state: FSMContext):
     await state.clear()  # Clear any existing state
 
     await callback.message.answer(
-        "📋 <b>Main Menu</b>\n\n" "Choose an action from the options below:",
+        "📋 <b>Главное меню</b>\n\nВыберите действие из списка ниже:",
         reply_markup=get_main_menu_keyboard(),
     )
 
