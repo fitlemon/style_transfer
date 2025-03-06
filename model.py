@@ -7,6 +7,7 @@ import io
 import os
 from dotenv import load_dotenv
 
+
 # Load OpenAI API key
 load_dotenv()
 
@@ -86,30 +87,176 @@ class StyleTransferModel:
         """
         Generate images using the Stable Diffusion pipeline.
         """
-        outputs = self.pipe(
-            prompt=prompt,
-            negative_prompt="low quality, blurry, distorted, disfigured, bad anatomy",
-            height=base_img.size[1],
-            width=base_img.size[0],
-            ip_adapter_image=ip_adapter_img,
-            image=canny_img,
-            guidance_scale=guidance_scale,
-            controlnet_conditioning_scale=conditioning_scale,
-            num_inference_steps=inference_steps,
-            num_images_per_prompt=num_images,
-        )
+        with torch.no_grad():
+            outputs = self.pipe(
+                prompt=prompt,
+                negative_prompt="low quality, blurry, distorted, disfigured, bad anatomy",
+                height=base_img.size[1],
+                width=base_img.size[0],
+                ip_adapter_image=ip_adapter_img,
+                image=canny_img,
+                guidance_scale=guidance_scale,
+                controlnet_conditioning_scale=conditioning_scale,
+                num_inference_steps=inference_steps,
+                num_images_per_prompt=num_images,
+            )
         return outputs.images
 
-    def generate_prompt(self, img) -> str:
-        """
-        Generate a textual prompt from an image using the OpenAI API.
-        """
-        # Convert the image to a base64-encoded JPEG
+    def _encode_image_to_base64(self, img):
+        """Convert PIL image to base64 encoded string"""
         buffered = io.BytesIO()
         img.save(buffered, format="JPEG")
         buffered.seek(0)
         img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        data_url = f"data:image/jpeg;base64,{img_base64}"
+        return f"data:image/jpeg;base64,{img_base64}"
+
+    def generate_content_description(self, img) -> str:
+        """
+        Generate a textual description of the content image, focusing on poses, objects, and people.
+        """
+        # Convert the image to a base64-encoded JPEG
+        data_url = self._encode_image_to_base64(img)
+
+        try:
+            # Import and initialize OpenAI client
+            from openai import OpenAI
+
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+            # Create a chat completion request focused on content description
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Describe this image focusing specifically on the exact poses, positions of people, "
+                                "the objects present, and their spatial arrangement. Include details about the people's positions, "
+                                "expressions, and clothing. Be precise about the composition, but don't describe the style or artistic qualities.",
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": data_url,
+                                    "detail": "low",
+                                },
+                            },
+                        ],
+                    },
+                ],
+                max_tokens=250,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error generating content description with OpenAI: {e}")
+            return "A photograph showing people and objects in a natural arrangement."
+
+    def generate_style_description(self, img) -> str:
+        """
+        Generate a textual description of the style image, focusing on texture, style, and theme.
+        """
+        # Convert the image to a base64-encoded JPEG
+        data_url = self._encode_image_to_base64(img)
+
+        try:
+            # Import and initialize OpenAI client
+            from openai import OpenAI
+
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+            # Create a chat completion request focused on style description
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Describe the artistic style, texture, color palette, and visual theme of this image. "
+                                "Focus on how it's rendered (digital art, oil painting, photography style, etc.), "
+                                "the mood it conveys, lighting techniques, and any distinctive visual characteristics. "
+                                "Don't describe the content or subjects of the image.",
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": data_url,
+                                    "detail": "low",
+                                },
+                            },
+                        ],
+                    },
+                ],
+                max_tokens=200,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error generating style description with OpenAI: {e}")
+            return "A visually striking artistic style with vibrant colors and detailed textures."
+
+    def combine_prompts(self, content_description: str, style_description: str) -> str:
+        """
+        Combine content and style descriptions into a coherent prompt for image generation.
+        """
+        try:
+            # Import and initialize OpenAI client
+            from openai import OpenAI
+
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+            # Create a chat completion request to combine descriptions
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a prompt engineering assistant. Your task is to create effective "
+                        "Stable Diffusion prompts by combining content and style descriptions.",
+                    },
+                    {
+                        "role": "user",
+                        "content": f"I need to create a high-quality image using Stable Diffusion. Please combine these two descriptions into a single, coherent prompt with 2 short sentences (maximum 77 tokens):\n\n"
+                        f"CONTENT DESCRIPTION (preserve all positioning, people, and objects exactly as described):\n{content_description}\n\n"
+                        f"STYLE DESCRIPTION (apply this artistic style to the content):\n{style_description}\n\n"
+                        f"Create a prompt that would generate an image with the exact content described (same people, poses, objects) "
+                        f"but rendered in the artistic style described. The prompt should be concise but detailed, focusing on both content and style aspects.",
+                    },
+                ],
+                max_tokens=300,
+            )
+            combined_prompt = response.choices[0].message.content
+        except Exception as e:
+            print(f"Error combining prompts with OpenAI: {e}")
+            combined_prompt = f"A detailed image showing {content_description} rendered in {style_description} style."
+
+        # Prepend additional style tokens to the prompt
+        full_prompt = f"(photorealistic:1.2), raw, masterpiece, high quality, 8k, {combined_prompt}"
+        return full_prompt
+
+    def generate_prompt(self, content_img, style_img=None):
+        """
+        Generate a textual prompt for image synthesis.
+        If only content_img is provided, generates a basic description.
+        If both images are provided, combines content and style descriptions.
+        """
+        if style_img is None:
+            # Legacy behavior - just describe the content
+            return self._legacy_generate_prompt(content_img)
+        else:
+            # New behavior - combine content and style descriptions
+            content_description = self.generate_content_description(content_img)
+            style_description = self.generate_style_description(style_img)
+            return self.combine_prompts(content_description, style_description)
+
+    def _legacy_generate_prompt(self, img) -> str:
+        """
+        Legacy method for generating a basic prompt from a single image.
+        """
+        # Convert the image to a base64-encoded JPEG
+        data_url = self._encode_image_to_base64(img)
 
         try:
             # Import and initialize OpenAI client
@@ -126,12 +273,12 @@ class StyleTransferModel:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Describe this photo in 2 short sentences as a prompt for generating an image in Stable Diffusion, adding vivid details (e.g. color, clothes, objects around, etc.) to help the model understand the image better. This photo is from kindergarten. Please be careful with the content. Describe only kid's activities",
+                                "text": "Describe this photo in 2 short sentences as a prompt for generating an image in Stable Diffusion, adding vivid details (e.g. color, clothes, objects around, etc.) to help the model understand the image better.",
                             },
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:image/jpeg;base64,{img_base64}",
+                                    "url": data_url,
                                     "detail": "low",
                                 },
                             },
@@ -151,3 +298,13 @@ class StyleTransferModel:
             f"(photorealistic:1.2), raw, masterpiece, high quality, 8k, {prompt}"
         )
         return full_prompt
+
+    def cleanup(self):
+        """Release GPU resources when done with a generation"""
+        if self.device == "cuda":
+            torch.cuda.empty_cache()
+
+        # Force Python's garbage collector
+        import gc
+
+        gc.collect()

@@ -2,23 +2,23 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
 def get_main_menu_keyboard() -> InlineKeyboardMarkup:
-    """Create main menu keyboard"""
+    """Создать главное меню на русском языке"""
     buttons = [
         [
             InlineKeyboardButton(
-                text="🔄 New Style Transfer", callback_data="action:new_transfer"
+                text="🔄 Новый перенос стиля", callback_data="action:new_transfer"
             )
         ],
-        [InlineKeyboardButton(text="⚙️ Settings", callback_data="action:settings")],
-        [InlineKeyboardButton(text="❓ Help", callback_data="action:help")],
+        [InlineKeyboardButton(text="⚙️ Настройки", callback_data="action:settings")],
+        [InlineKeyboardButton(text="❓ Помощь", callback_data="action:help")],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def get_settings_keyboard() -> InlineKeyboardMarkup:
-    """Create keyboard for settings menu"""
+    """Создать меню настроек на русском языке"""
     buttons = [
-        # Guidance scale controls
+        # Регулировка guidance
         [
             InlineKeyboardButton(
                 text="⬇️ Guidance", callback_data="setting:guidance_down"
@@ -27,39 +27,39 @@ def get_settings_keyboard() -> InlineKeyboardMarkup:
                 text="Guidance ⬆️", callback_data="setting:guidance_up"
             ),
         ],
-        # Conditioning scale controls
+        # Регулировка conditioning
         [
             InlineKeyboardButton(
-                text="⬇️ Conditioning", callback_data="setting:conditioning_down"
+                text="⬇️ Condit-ng", callback_data="setting:conditioning_down"
             ),
             InlineKeyboardButton(
-                text="Conditioning ⬆️", callback_data="setting:conditioning_up"
+                text="Condit-ng ⬆️", callback_data="setting:conditioning_up"
             ),
         ],
-        # Inference steps controls
+        # Шаги
         [
             InlineKeyboardButton(text="⬇️ Steps", callback_data="setting:steps_down"),
             InlineKeyboardButton(text="Steps ⬆️", callback_data="setting:steps_up"),
         ],
-        # IP Adapter scale controls
+        # IP Адаптер
         [
-            InlineKeyboardButton(text="⬇️ IP Adapter", callback_data="setting:ip_down"),
-            InlineKeyboardButton(text="IP Adapter ⬆️", callback_data="setting:ip_up"),
+            InlineKeyboardButton(text="⬇️ IP Адаптер", callback_data="setting:ip_down"),
+            InlineKeyboardButton(text="IP Адаптер ⬆️", callback_data="setting:ip_up"),
         ],
-        # Done button
+        # Готово
         [
-            InlineKeyboardButton(text="✅ Done", callback_data="action:main_menu"),
+            InlineKeyboardButton(text="✅ Готово", callback_data="action:main_menu"),
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def get_confirmation_keyboard() -> InlineKeyboardMarkup:
-    """Create keyboard for confirming actions"""
+    """Создать клавиатуру для подтверждения на русском языке"""
     buttons = [
         [
-            InlineKeyboardButton(text="✅ Yes", callback_data="confirm:yes"),
-            InlineKeyboardButton(text="❌ No", callback_data="confirm:no"),
+            InlineKeyboardButton(text="✅ Да", callback_data="confirm:yes"),
+            InlineKeyboardButton(text="❌ Нет", callback_data="confirm:no"),
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
