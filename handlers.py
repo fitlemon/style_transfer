@@ -332,7 +332,7 @@ async def photo_without_state(message: Message):
             ],
             [
                 InlineKeyboardButton(
-                    text="📋 Главное меню"", callback_data="action:main_menu"
+                    text="📋 Главное меню", callback_data="action:main_menu"
                 )
             ],
         ]
@@ -439,7 +439,7 @@ async def settings_callback(callback: CallbackQuery, state: FSMContext):
     elif action == "done":
         await callback.answer("Settings saved!")
         await callback.message.answer(
-            "Settings have been saved. You can now start a new style transfer.",
+            "Настройки сохранены. Выберите действие из меню ниже:",
             reply_markup=get_main_menu_keyboard(),
         )
         return
